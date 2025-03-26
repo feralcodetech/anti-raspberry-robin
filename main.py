@@ -5,77 +5,49 @@
 import colorama
 import ctypes
 import os
-import random
 import re
 import shutil
 import stat
 import sys
-import time
+import traceback
 import win32api
-
-colorama.init()
 
 email = colorama.Fore.LIGHTBLUE_EX + "omerdrkic2501@gmail.com" + colorama.Fore.RESET
 
-def abort(code: int, string: str = ""):
+def abort(code, string = ""):
     if string:
         sys.stderr.write(colorama.Fore.LIGHTRED_EX + string + colorama.Fore.RESET)
         sys.stderr.flush()
+    os.system("@echo on")
     exit(code)
 
-def prompt(msg: str):
+def prompt(msg):
     confirm = input(f"{msg} (Y/n) {colorama.Fore.LIGHTBLACK_EX}").lower()
-    print(colorama.Fore.RESET, end = "")
+    print(colorama.Fore.RESET, end="")
     while confirm not in "yn":
         confirm = input(
             f"Please enter a valid option. (Y/n) {colorama.Fore.LIGHTBLACK_EX}"
         ).lower()
-        print(colorama.Fore.RESET, end = "")
+        print(colorama.Fore.RESET, end="")
     return confirm == "y"
 
-os.system("@echo off")
+def scan(msg, conditions, reminders, common):
+    data = input(f"{msg} {colorama.Fore.LIGHTBLACK_EX}").lower()
+    print(colorama.Fore.RESET, end="")
+    while True:
+        success = True
+        for i in range(len(conditions)):
+            if not conditions[i](data):
+                success = False
+                data = input(f"{reminders[i]} {common} {colorama.Fore.LIGHTBLACK_EX}").lower()
+                print(colorama.Fore.RESET, end="")
+        if success:
+            break
+    return data
 
-if not ctypes.windll.shell32.IsUserAnAdmin():
-    abort(2, "The script needs admin privileges to operate.")
-elif len(sys.argv) < 2:
-    abort(2, "Expected a drive name.")
-elif len(sys.argv) > 2:
-    abort(2, "Too many arguments.")
-
-drive = sys.argv[1]
-
-if not re.match(r"^[A-Z]:$", drive):
-    abort(2, "Invalid drive name.")
-elif drive == "C:":
-    abort(2, "Cannot operate on main drive.")
-
-path = drive + "\\"
-
-if not os.path.exists(path):
-    abort(3, f"Drive {drive} is inaccessible.")
-elif not os.access(path, os.R_OK):
-    abort(5, f"You don't have permission to read from drive {drive}.")
-elif not os.access(path, os.W_OK):
-    abort(5, f"You don't have permission to write to drive {drive}.")
-
-try:
-    label = win32api.GetVolumeInformation(path)[0]
-except:
-    abort(4, "Failed to obtain drive metadata.")
-
-SUS = [
-    label,
-    "USB Drive",
-    "Removable Disk"
-]
-
-TRACES = [
-    label + ".lnk",
-    "USB Drive.lnk",
-    "Removable Disk.lnk"
-    "desktop.ini",
-    "autorun.inf"
-]
+drive = None
+label = None
+sus   = None
 
 class Antivirus:
     def __init__(self):
@@ -91,24 +63,24 @@ class Antivirus:
         else:
             print("No threats were found by the script.")
             print(f"If you still think your drive might be infected, contact me at {email}.")
-            exit(0)
+            exit()
     def check(self):
         print("Checking...")
-        for entity in os.listdir(path):
-            time.sleep(random.uniform(0.25, 2))
-            if not (entity in SUS and os.path.isdir(path + entity)):
+        for entity in os.listdir(drive):
+            entity_path = os.path.join(drive, entity)
+            if not (entity in sus and os.path.isdir(entity_path)):
                 continue
             flag = prompt(f"Should there be a directory named \"{entity}\" on your drive?")
             if flag:
                 continue
             visible = bool(
-                os.stat(path + entity).st_file_attributes &
+                os.stat(entity_path).st_file_attributes &
                 (
                     (stat.FILE_ATTRIBUTE_HIDDEN & stat.FILE_ATTRIBUTE_SYSTEM) |
                     stat.FILE_ATTRIBUTE_SYSTEM
                 )
             )
-            hidden = os.listdir(path + entity)
+            hidden = os.listdir(entity_path)
             if hidden:
                 print(f"{"Hidden f" if visible else "F"}iles and/or folders found:")
                 print()
@@ -118,7 +90,6 @@ class Antivirus:
             else:
                 print(f"There is an empty directory \"{entity}\" on your drive.")
             return entity, hidden
-        time.sleep(random.uniform(0.5, 1.5))
         return None, None
     def work(self, entity: str, empty: bool):
         while True:
@@ -130,46 +101,52 @@ class Antivirus:
             if flag:
                 break
             self.stop()
+        dst = scan(
+            "Where would you like your restored files to be?",
+            [
+                (lambda fp: os.path.exists(fp)),
+                (lambda fp: os.path.isdir(fp)),
+                (lambda fp: os.access(fp, os.R_OK)),
+                (lambda fp: os.access(fp, os.W_OK)),
+                (lambda fp: not os.listdir(fp))
+            ],
+            [
+                "The provided path doesn't exist.",
+                "Tho provided path isn't a directory.",
+                "You don't have permission to read from the provided location.",
+                "You don't have permission to write to the provided location.",
+                "The directory must be empty."
+            ],
+            "Please enter a valid path:"
+        ) if not empty else None
         print("Working...")
-        time.sleep(random.uniform(2.5, 5))
-        entity_path = path + entity
+        entity_path = os.path.join(drive, entity)
         if bool(
             os.stat(entity_path).st_file_attributes &
             stat.FILE_ATTRIBUTE_SYSTEM
         ):
             os.system(f"attrib -h -s {entity_path}")
-        for root, dirs, files in os.walk(path):
-            for trace in TRACES:
-                if trace in files:
-                    full = os.path.join(root, trace)
-                    if bool(
-                        os.stat(full).st_file_attributes &
-                        stat.FILE_ATTRIBUTE_SYSTEM
-                    ):
-                        os.system(f"attrib -h -s {entity_path}")
-                    os.remove(full)
         for sub in os.listdir(entity_path):
             full = os.path.join(entity_path, sub)
             if bool(
                 os.stat(full).st_file_attributes &
                 stat.FILE_ATTRIBUTE_SYSTEM
             ):
-                os.system(f"attrib -h -s {entity_path}")
+                os.system(f"attrib -h -s {full}")
             if (os.path.isdir(full)):
-                shutil.copytree(full, os.path.join(path, sub))
+                shutil.copytree(full, os.path.join(dst, sub))
             else:
-                shutil.copy(full, path)
+                shutil.copy(full, dst)
         shutil.rmtree(entity_path)
         print("Operation completed successfully.")
-        self.after(entity, empty)
-        exit(0)
-    def after(self, entity: str, empty: bool):
+        self.after()
+        exit()
+    def after(self):
         print("All your old files should now be in the root of your drive.")
         flag = prompt("Do you see all your files?")
         if not flag:
-            print(f"Please report this bug to {email}.")
-            flag = prompt("Do you wish to restart the operation?")
-            self.work(entity, empty)
+            print(f"Please report this bug to {email} and/or try running the script again.")
+            exit()
         else:
             flag = prompt("Do you see any unfamiliar files (e.g. \"desktop.ini\")?")
             if flag:
@@ -184,12 +161,53 @@ class Antivirus:
         flag = prompt("Are you sure you want to abort?")
         if flag:
             print("Script aborted.")
-            exit(1)
+            exit()
         else:
             print("Script not aborted.")
 
-print("ANTI-RASPBERRY ROBIN 0.1.0")
-print()
-print()
+def main():
+    global drive, label, sus
+    colorama.init()
+    os.system("@echo off")
+    if not ctypes.windll.shell32.IsUserAnAdmin():
+        abort(2, "The script needs admin privileges to operate.")
+    elif len(sys.argv) < 2:
+        abort(2, "Expected a drive name.")
+    elif len(sys.argv) > 2:
+        abort(2, "Too many arguments.")
+    drive = sys.argv[1]
+    if not re.match(r"^[A-Z]:$", drive):
+        abort(2, "Invalid drive name.")
+    elif drive == "C:":
+        abort(2, "Cannot operate on main drive.")
+    if not os.path.exists(drive):
+        abort(3, f"Drive {drive} is inaccessible.")
+    elif not os.access(drive, os.R_OK):
+        abort(5, f"You don't have permission to read from drive {drive}.")
+    elif not os.access(drive, os.W_OK):
+        abort(5, f"You don't have permission to write to drive {drive}.")
+    try:
+        label = win32api.GetVolumeInformation(drive)[0]
+    except:
+        abort(4, "Failed to obtain drive metadata.")
+    sus = [
+        label,
+        "USB Drive",
+        "Removable Disk"
+    ]
+    print("ANTI-RASPBERRY ROBIN 0.2.0")
+    print()
+    print()
+    try:
+        Antivirus().exec()
+    except:
+        with open("except.log", "w+") as file:
+            file.write(traceback.format_exc())
+            file.close()
+        print("An internal error occured.", end=" ")
+        print(f"Please report this to {email} along with \"except.log\"", end=" ")
+        print("which has been generated in the current working directory.")
+    os.system("@echo on")
 
-Antivirus().exec()
+if __name__ == "__main__":
+    main()

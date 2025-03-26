@@ -20,10 +20,10 @@ operating systems as well (maybe, if this makes it any further from my GitHub pa
 Usage:
 
 ```cmd
-anti-raspberry-robin <drive>
+anti-raspberry-robin [drive]
 ```
 
-`<drive>` - the letter of the drive to operate on, followed by a colon (":")
+`[drive]` - the letter of the drive to operate on, followed by a colon (":")
 
 I made this project open-source because I don't think anyone would pay a cent for 200-ish lines
 of Python code, so any help (feature recommendations, bug reports, new malware pattern reports)

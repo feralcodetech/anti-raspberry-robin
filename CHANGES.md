@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented here.
 
+### 0.2.1 - 03/27/2025
+
+#### Added
+
+- Added back automatic removal of trace files, but this time, instead of just removing the files,
+the user can choose for every (suspicious) file whether they'd like to remove it or not.
+
 ### 0.2.0 - 03/26/2025
 
 #### Added

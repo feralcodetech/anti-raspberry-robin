@@ -45,9 +45,10 @@ def scan(msg, conditions, reminders, common):
             break
     return data
 
-drive = None
-label = None
-sus   = None
+drive  = None
+label  = None
+sus    = None
+traces = None
 
 class Antivirus:
     def __init__(self):
@@ -133,6 +134,11 @@ class Antivirus:
                 stat.FILE_ATTRIBUTE_SYSTEM
             ):
                 os.system(f"attrib -h -s {full}")
+            if sub in traces:
+                flag = prompt(f"Found possible malware trace file \"{sub}\". Remove?")
+                if flag:
+                    os.remove(full)
+                    continue
             if (os.path.isdir(full)):
                 shutil.copytree(full, os.path.join(dst, sub))
             else:
@@ -166,7 +172,7 @@ class Antivirus:
             print("Script not aborted.")
 
 def main():
-    global drive, label, sus
+    global drive, label, sus, traces
     colorama.init()
     os.system("@echo off")
     if not ctypes.windll.shell32.IsUserAnAdmin():
@@ -194,6 +200,13 @@ def main():
         label,
         "USB Drive",
         "Removable Disk"
+    ]
+    traces = [
+        f"{label}.lnk",
+        "USB Drive.lnk",
+        "Removable Disk.lnk",
+        "desktop.ini",
+        "autorun.inf"
     ]
     print("ANTI-RASPBERRY ROBIN 0.2.0")
     print()

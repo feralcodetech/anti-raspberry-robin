@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented here.
 
+### 0.3 - 03/29/2025
+
+#### Added
+
+- Added new common suspicious folder and file names to the list.
+
+#### Fixed
+
+- Fixed a bug that would crash the program on every exit.
+- Fixed a bug that would cause the script to fail to remove the folder where the files were
+originally hidden.
+
 ### 0.2.1 - 03/27/2025
 
 #### Added
